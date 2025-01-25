@@ -26,6 +26,34 @@ module Async
         end
       end
 
+      def get_json_object(uri)
+        Sync do
+          res = get uri
+          if res.ok? and res.headers['content-type'] == 'application/json'
+            JSON.parse res.read
+          end
+        ensure
+          res&.close
+        end
+      end
+
+      def get_json_array(uri)
+        results = []
+        while(uri) do
+          Sync do
+            res = get uri
+            if res.ok? and res.headers['content-type'] == 'application/json'
+              data = JSON.parse res.read
+              results += data['results'].to_a
+              uri = data['next_url'] && URI(data['next_url'])
+            end
+          ensure
+            res&.close
+          end
+        end
+        results
+      end
+
       private
 
       def set_pace(basic)
